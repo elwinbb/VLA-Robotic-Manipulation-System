@@ -16,8 +16,8 @@
     <main class="shell">
         <header class="header">
             <div>
-                <p class="eyebrow">Human -> Robot Interface</p>
-                <h1>Vision + Instruction Console</h1>
+                <p class="eyebrow">Robot Interface</p>
+                <h1>Camera + Chat Console</h1>
             </div>
             <div class="status-bar">
                 <span id="camera-status" class="pill">Camera: checking...</span>
@@ -27,9 +27,9 @@
                     Camera ID
                     <input id="camera-id-input" type="number" min="0" step="1" value="0">
                 </label>
-                <button id="camera-apply-id-btn" class="pill" type="button">Set Camera ID</button>
-                <button id="camera-toggle-id-btn" class="pill" type="button">Toggle Camera ID</button>
-                <button id="camera-restart-btn" class="pill" type="button">Restart Camera</button>
+                <button id="camera-apply-id-btn" class="pill" type="button">Set ID</button>
+                <button id="camera-toggle-id-btn" class="pill" type="button">Next ID</button>
+                <button id="camera-restart-btn" class="pill" type="button">Restart</button>
             </div>
         </header>
 
@@ -37,7 +37,7 @@
             <article class="panel camera-panel">
                 <div class="panel-top">
                     <h2>Live Camera</h2>
-                    <p>Realtime MJPEG stream from your selected camera device.</p>
+                    <p>Live feed from the selected camera source.</p>
                 </div>
                 <div class="camera-frame">
                     <img id="camera-feed" src="/api/video_feed" alt="Robot camera feed">
@@ -48,7 +48,7 @@
                 <div class="panel-top chat-head">
                     <div>
                         <h2>Robot Chat</h2>
-                        <p>Send natural commands and trigger robot actions.</p>
+                        <p>Send direct instructions to the robot.</p>
                     </div>
                     <label class="mode-select" for="chat-mode">
                         Chat Mode

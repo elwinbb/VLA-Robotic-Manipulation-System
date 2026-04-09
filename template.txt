@@ -1,0 +1,232 @@
+# ============================================================
+# GOAL:
+# Full vision-guided pick-and-place system for OpenManipulator-X
+# using:
+# - Intel RealSense (D435/D455)
+# - ArUco markers:
+#     IDs 0,1,2,3 → workspace corners
+#     ID 4        → robot base
+# - Dynamixel SDK (NO ROS)
+# - Smooth gradient velocity control for precise motion
+# ============================================================
+
+# ============================================================
+# LIBRARIES:
+# ============================================================
+# pyrealsense2, cv2 (aruco), numpy, dynamixel_sdk, time
+
+# ============================================================
+# 1. REALSENSE SETUP
+# ============================================================
+# - Initialize pipeline
+# - Enable color + depth streams
+# - Align depth to color
+# - Extract intrinsics: fx, fy, cx, cy
+
+# ============================================================
+# 2. ARUCO DETECTION
+# ============================================================
+# - Detect markers using cv2.aruco
+# - Required IDs:
+#     0,1,2,3 → workspace
+#     4       → robot base
+#     others  → object
+
+# - For each marker:
+#     get corners, rvec, tvec
+
+# ============================================================
+# 3. WORKSPACE MAPPING (HOMOGRAPHY)
+# ============================================================
+# - For IDs 0–3:
+#     compute marker centers in image
+
+# - Define world coordinates (meters):
+#     ID 0 → (0, 0)
+#     ID 1 → (W, 0)
+#     ID 2 → (W, H)
+#     ID 3 → (0, H)
+
+# - Compute homography:
+#     H = cv2.findHomography(image_pts, world_pts)
+
+# - Function:
+#     pixel_to_workspace(u, v) → (Xw, Yw)
+
+# ============================================================
+# 4. DEPTH → Z
+# ============================================================
+# - Get depth at (u, v)
+# - Convert to meters
+# - Combine:
+#     Ow_workspace = (Xw, Yw, Z)
+
+# ============================================================
+# 5. ROBOT BASE CALIBRATION (ID 4)
+# ============================================================
+# - Use estimatePoseSingleMarkers()
+# - Get rvec_base, tvec_base
+
+# - Convert to transformation matrix:
+#     R = Rodrigues(rvec)
+#     T_camera_base = [R | t]
+
+# - Invert:
+#     T_base_camera = inverse(T_camera_base)
+
+# ============================================================
+# 6. OBJECT POSITION IN BASE FRAME
+# ============================================================
+# - Get object pixel (u, v)
+# - Convert:
+#     (u, v) → (Xw, Yw) via homography
+#     Z from depth
+
+# - Convert to camera 3D:
+#     Xc = (u - cx) * Z / fx
+#     Yc = (v - cy) * Z / fy
+#     Zc = Z
+
+# - Transform:
+#     P_base = T_base_camera @ [Xc, Yc, Zc, 1]
+
+# ============================================================
+# 7. END EFFECTOR TARGET
+# ============================================================
+# - Fw:
+#     X = P_base.x
+#     Y = P_base.y
+#     Z = P_base.z + offset (grasp height)
+
+# - Orientation:
+#     fixed downward gripper
+
+# ============================================================
+# 8. INVERSE KINEMATICS (OpenManipulator-X)
+# ============================================================
+# - Define link lengths:
+#     L1, L2, L3
+
+# - Compute:
+#     joint1 = atan2(y, x)
+
+#     r = sqrt(x^2 + y^2)
+#     z = Z - base_height
+
+#     D = (r^2 + z^2 - L2^2 - L3^2) / (2*L2*L3)
+
+#     joint3 = atan2(sqrt(1 - D^2), D)
+#     joint2 = atan2(z, r) - atan2(L3*sin(joint3), L2 + L3*cos(joint3))
+
+#     joint4 = -(joint2 + joint3)
+
+# - Clamp to joint limits
+
+# ============================================================
+# 9. DYNAMIXEL SDK SETUP
+# ============================================================
+# - Protocol 2.0
+# - Open port:
+#     /dev/ttyACM0 or COMx
+# - Set baudrate
+
+# Motor IDs:
+#   11 → base
+#   12 → shoulder
+#   13 → elbow
+#   14 → wrist
+#   15 → gripper
+
+# Control table:
+#   Torque Enable → 64
+#   Goal Position → 116
+#   Profile Velocity → 112
+#   Profile Acceleration → 108
+
+# Enable torque for all motors
+
+# ============================================================
+# 10. POSITION CONVERSION
+# ============================================================
+# radians → Dynamixel:
+#   pos = int((angle + pi) * (4095 / (2*pi)))
+
+# ============================================================
+# 11. SMOOTH TRAJECTORY (GRADIENT VELOCITY CONTROL)
+# ============================================================
+# Implement smooth motion using cosine interpolation
+
+# Function:
+#   smooth_profile(t):
+#       return 0.5 * (1 - cos(pi * t))
+
+# Function:
+#   move_smooth(q_start, q_goal, duration):
+#       steps = 80
+#       dt = duration / steps
+
+#       for i in range(steps):
+#           t = i / steps
+#           alpha = smooth_profile(t)
+
+#           q = q_start + alpha * (q_goal - q_start)
+
+#           send_joint_positions(q)
+#           sleep(dt)
+
+# ============================================================
+# 12. SEND COMMANDS
+# ============================================================
+# - Convert all joints to Dynamixel positions
+# - Send using write4ByteTxRx
+# - Send ALL joints together each step
+
+# ============================================================
+# 13. GRIPPER CONTROL
+# ============================================================
+# - Open/close using position values
+
+# ============================================================
+# 14. MOTION SEQUENCE
+# ============================================================
+# - Detect object
+# - Compute IK
+
+# Sequence:
+#   move_smooth(q_above, 2.5)
+#   move_smooth(q_down, 1.5)
+#   close_gripper()
+#   move_smooth(q_up, 2.5)
+
+# ============================================================
+# 15. FUNCTIONS TO IMPLEMENT
+# ============================================================
+# - detect_markers()
+# - compute_homography()
+# - pixel_to_workspace()
+# - get_depth()
+# - get_base_transform()
+# - pixel_to_camera()
+# - transform_to_base()
+# - inverse_kinematics()
+# - smooth_profile()
+# - move_smooth()
+# - send_joint_positions()
+
+# ============================================================
+# 16. SAFETY + ROBUSTNESS
+# ============================================================
+# - Check all 4 workspace markers visible
+# - Check ID 4 visible before calibration
+# - Handle missing depth
+# - Clamp joint limits
+# - Add small Z offset to avoid collisions
+
+# ============================================================
+# OUTPUT:
+# ============================================================
+# - Complete Python script
+# - Modular, clean, runnable
+# - Smooth, accurate robot motion
+
+# Now generate full implementation.
