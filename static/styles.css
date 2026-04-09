@@ -1,0 +1,342 @@
+:root {
+    --bg: #f6f0df;
+    --ink: #111111;
+    --panel: #fff9eb;
+    --stroke: #1f1f1f;
+    --accent: #0f766e;
+    --accent-2: #ca6702;
+    --muted: #57534e;
+    --chip: #ece5cf;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 20% 20%, #ffd88d 0%, transparent 45%),
+        radial-gradient(circle at 82% 14%, #8ecae6 0%, transparent 50%),
+        linear-gradient(150deg, #f6f0df 0%, #f3e8cc 46%, #ede3c8 100%);
+    overflow-x: hidden;
+}
+
+.bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(36px);
+    opacity: 0.35;
+    pointer-events: none;
+    animation: float 8s ease-in-out infinite;
+}
+
+.bg-orb-a {
+    width: 300px;
+    height: 300px;
+    left: -80px;
+    bottom: 10%;
+    background: #ff7d00;
+}
+
+.bg-orb-b {
+    width: 360px;
+    height: 360px;
+    right: -120px;
+    top: 0;
+    background: #219ebc;
+    animation-delay: 1.8s;
+}
+
+.shell {
+    width: min(1200px, 94vw);
+    margin: 1.7rem auto;
+    padding: 1rem;
+    position: relative;
+    z-index: 2;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    animation: slide-in 450ms ease-out;
+}
+
+.eyebrow {
+    margin: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+h1 {
+    margin: 0.25rem 0 0;
+    font-size: clamp(1.4rem, 4vw, 2.3rem);
+}
+
+h2 {
+    margin: 0;
+    font-size: 1.08rem;
+}
+
+.status-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: end;
+}
+
+.pill {
+    border: 2px solid var(--stroke);
+    border-radius: 999px;
+    padding: 0.32rem 0.72rem;
+    font-size: 0.82rem;
+    background: #fff;
+}
+
+button.pill {
+    cursor: pointer;
+    font-family: "IBM Plex Mono", monospace;
+}
+
+.camera-id-control {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 2px solid var(--stroke);
+    border-radius: 999px;
+    padding: 0.22rem 0.5rem;
+    background: #fff;
+    font-size: 0.78rem;
+}
+
+.camera-id-control input {
+    width: 62px;
+    border: 2px solid var(--stroke);
+    border-radius: 8px;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.82rem;
+    font-family: "IBM Plex Mono", monospace;
+}
+
+.pill.muted {
+    color: var(--muted);
+    background: var(--chip);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1rem;
+}
+
+.panel {
+    border: 3px solid var(--stroke);
+    border-radius: 18px;
+    background: var(--panel);
+    box-shadow: 8px 8px 0 #00000014;
+    padding: 1rem;
+    animation: rise 500ms ease-out;
+}
+
+.panel-top p {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.camera-frame {
+    margin-top: 0.85rem;
+    border: 3px solid var(--stroke);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #111;
+    aspect-ratio: 4 / 3;
+}
+
+#camera-feed {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chat-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.chat-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: end;
+}
+
+.mode-select {
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+}
+
+.mode-select select {
+    border: 2px solid var(--stroke);
+    border-radius: 9px;
+    padding: 0.45rem;
+    background: #fff;
+    font-family: "IBM Plex Mono", monospace;
+}
+
+.messages {
+    height: 355px;
+    overflow-y: auto;
+    border: 2px dashed #625f57;
+    border-radius: 12px;
+    padding: 0.75rem;
+    background: #fffdf5;
+}
+
+.msg {
+    margin: 0.45rem 0;
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    max-width: 92%;
+    line-height: 1.35;
+    animation: pop 220ms ease-out;
+}
+
+.msg.user {
+    margin-left: auto;
+    background: #c7f9cc;
+    border: 2px solid #2b9348;
+}
+
+.msg.bot {
+    background: #d9f0ff;
+    border: 2px solid #219ebc;
+}
+
+.msg.system {
+    background: #fff2cc;
+    border: 2px solid #ca6702;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.chip {
+    border: 2px solid var(--stroke);
+    background: var(--chip);
+    border-radius: 999px;
+    padding: 0.35rem 0.72rem;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-family: "IBM Plex Mono", monospace;
+}
+
+.chip:hover {
+    transform: translateY(-1px);
+    background: #fff;
+}
+
+.chat-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-form input {
+    flex: 1;
+    border: 2px solid var(--stroke);
+    border-radius: 10px;
+    padding: 0.72rem;
+    font-size: 0.95rem;
+}
+
+.chat-form button {
+    border: 2px solid var(--stroke);
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #14b8a6);
+    color: #fff;
+    min-width: 90px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.chat-form button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+@keyframes pop {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 960px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .messages {
+        height: 280px;
+    }
+
+    .chat-head {
+        flex-direction: column;
+        align-items: start;
+    }
+}
