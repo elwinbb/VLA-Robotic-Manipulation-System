@@ -1,15 +1,18 @@
-# Robot Camera + Chat Web Interface
+# Robot Vision Prompt Web Interface
 
-This project now includes a Flask web app that shows a live camera feed and a chat interface for robot commands.
+This project includes a Flask web app that now uses the same RealSense + Gemini + calibration + robot-motion pipeline as `pick_and_place_gemini.ipynb`.
 
 ## What it does
 
-- Streams camera frames in-browser from OpenCV (`/api/video_feed`)
-- Accepts chat commands and maps them to robot actions (`/api/chat`)
-- Supports two chat modes:
-  - `Local Parser` (no API key needed)
-  - `AI Interpreter` (requires `OPENAI_API_KEY`)
-- Falls back to simulation mode if Dynamixel SDK or hardware is not available
+- Streams aligned RealSense color frames in-browser (`/api/video_feed`)
+- Runs the notebook Gemini model `gemini-robotics-er-1.6-preview` against the latest RealSense frame (`/api/vision/run`)
+- Supports prompt types for:
+  - `Description`
+  - `Pick Object`
+  - `Pick & Place`
+- Shows the latest annotated prompt output image (`/api/vision/overlay`)
+- Streams run state, structured output, and logs into the UI (`/api/vision/state`)
+- Can optionally execute the notebook pickup / pick-and-place motion flow from the web UI
 
 ## Setup
 
@@ -17,9 +20,16 @@ This project now includes a Flask web app that shows a live camera feed and a ch
 python -m pip install -r requirements.txt
 ```
 
+You will need:
+
+- A RealSense camera with `pyrealsense2`
+- A valid `GEMINI_API_KEY`
+- `dynamixel_sdk` plus the robot hardware if you want execution from the site
+
 ## Run
 
 ```powershell
+$env:GEMINI_API_KEY="your_gemini_key_here"
 python app.py
 ```
 
@@ -28,8 +38,8 @@ Open: `http://127.0.0.1:5000`
 ## Optional environment variables
 
 ```powershell
-$env:CAMERA_INDEX="0"
-$env:CAMERA_FALLBACK_INDICES="0,1,2"
+$env:GEMINI_API_KEY="your_gemini_key_here"
+$env:GEMINI_MODEL="gemini-robotics-er-1.6-preview"
 $env:OPENAI_API_KEY="your_key_here"
 $env:OPENAI_MODEL="gpt-4.1-mini"
 $env:PORT="5000"
@@ -39,32 +49,20 @@ $env:PORT="5000"
 
 If the camera panel is offline:
 
-1. Close other apps using the camera (Zoom/Teams/Camera app).
-2. Use the UI controls in the header to set or toggle Camera ID live.
-3. Try a different index manually:
-
-```powershell
-$env:CAMERA_INDEX="1"
-python app.py
-```
-
-4. Try a wider fallback list:
-
-```powershell
-$env:CAMERA_FALLBACK_INDICES="0,1,2,3"
-python app.py
-```
-
-5. Check health endpoint for diagnostics:
+1. Make sure the RealSense camera is connected and not in use by another app.
+2. Use the `Restart pipeline` button in the UI.
+3. Check health endpoint for diagnostics:
 
 `http://127.0.0.1:5000/api/health`
 
-Runtime camera control endpoints:
+Prompt analysis endpoints:
 
-- `POST /api/camera/set_index` with JSON body `{ "camera_index": 1 }`
-- `POST /api/camera/toggle` with JSON body `{ "direction": "next" }`
+- `POST /api/vision/run` with JSON body `{ "prompt_type": "description", "prompt": "Describe the scene.", "execute_robot": false }`
+- `GET /api/vision/state`
+- `GET /api/vision/overlay`
+- `POST /api/vision/clear`
 
-## Example commands
+## Legacy robot command examples
 
 - `connect`
 - `read positions`
@@ -84,3 +82,9 @@ The current robot adapter defaults to:
 - IDs: `11, 12, 13, 14, 15`
 
 If your robot uses a different port, update `device_name` in `robot_adapter.py`.
+
+## Notes
+
+- The website now uses the notebook pipeline directly instead of the earlier lightweight preview-only service.
+- The notebook cell that hardcoded a Gemini key was not copied into the web app. The Flask app reads `GEMINI_API_KEY` from your environment instead.
+- For `Pick Object` and `Pick & Place`, the UI can run preview only or execute the robot after ArUco calibration, matching the notebook flow.

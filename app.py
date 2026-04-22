@@ -8,6 +8,7 @@ import cv2
 from flask import Flask, Response, jsonify, render_template, request
 
 from robot_adapter import RobotCommandRouter
+from vision_service import GeminiVisionService
 
 try:
     from openai import OpenAI
@@ -230,13 +231,14 @@ def make_placeholder_frame(text: str) -> bytes:
 
 app = Flask(__name__)
 
-camera_index = int(os.getenv("CAMERA_INDEX", "0"))
-camera_stream = CameraStream(camera_index=camera_index)
+router = RobotCommandRouter()
+vision_service = GeminiVisionService()
+camera_stream = vision_service.camera_stream
 camera_stream.start()
 atexit.register(camera_stream.stop)
 
-router = RobotCommandRouter()
-placeholder_frame = make_placeholder_frame("Camera unavailable. Check CAMERA_INDEX.")
+placeholder_frame = make_placeholder_frame("RealSense pipeline unavailable.")
+analysis_placeholder_frame = make_placeholder_frame("Run a prompt to see detections.")
 
 
 def stream_generator():
@@ -301,7 +303,13 @@ def _call_openai_interpreter(user_message: str) -> Dict[str, object]:
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        frontend_config={
+            "promptCatalog": vision_service.config_summary()["prompt_catalog"],
+            "defaultPromptType": "description",
+        },
+    )
 
 
 @app.get("/api/video_feed")
@@ -312,11 +320,74 @@ def video_feed():
 @app.get("/api/health")
 def health():
     camera_state = camera_stream.status()
+    config = vision_service.config_summary()
     return jsonify(
         {
             **camera_state,
             "robot_connected": router.robot.connected,
             "simulated_robot": router.robot.simulated,
+            "vision_status": vision_service.state.snapshot()["status"],
+            "gemini_installed": config["gemini_installed"],
+            "gemini_api_key_present": config["api_key_present"],
+            "gemini_model": config["model"],
+            "realsense_installed": config["realsense_installed"],
+            "robot_sdk_available": config["robot_sdk_available"],
+        }
+    )
+
+
+@app.get("/api/vision/state")
+def vision_state():
+    return jsonify(
+        {
+            **vision_service.state.snapshot(),
+            **vision_service.config_summary(),
+        }
+    )
+
+
+@app.get("/api/vision/overlay")
+def vision_overlay():
+    overlay = vision_service.state.overlay_image()
+    if not overlay:
+        overlay = analysis_placeholder_frame
+    return Response(overlay, mimetype="image/jpeg")
+
+
+@app.post("/api/vision/clear")
+def clear_vision_state():
+    vision_service.state.clear()
+    return jsonify(
+        {
+            "ok": True,
+            **vision_service.state.snapshot(),
+            **vision_service.config_summary(),
+        }
+    )
+
+
+@app.post("/api/vision/run")
+def run_vision_prompt():
+    body = request.get_json(silent=True) or {}
+    prompt_type = str(body.get("prompt_type", "description")).strip()
+    prompt_text = str(body.get("prompt", "")).strip()
+    raw_execute = body.get("execute_robot", False)
+    execute_robot = raw_execute if isinstance(raw_execute, bool) else str(raw_execute).strip().lower() in {"1", "true", "yes", "on"}
+
+    try:
+        run_id = vision_service.run_analysis_async(prompt_type, prompt_text, execute_robot=execute_robot)
+    except ValueError as exc:
+        return jsonify({"ok": False, "reply": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "reply": str(exc)}), 409
+
+    return jsonify(
+        {
+            "ok": True,
+            "run_id": run_id,
+            "reply": "Prompt analysis started.",
+            **vision_service.state.snapshot(),
+            **vision_service.config_summary(),
         }
     )
 
@@ -395,4 +466,11 @@ def chat():
 if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "5000"))
-    app.run(host=host, port=port, debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
+    app.run(
+        host=host,
+        port=port,
+        debug=debug,
+        use_reloader=False,
+        threaded=True,
+    )

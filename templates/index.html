@@ -3,87 +3,159 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Robot Console</title>
+    <title>Vision Prompt Console</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="bg-orb bg-orb-a"></div>
-    <div class="bg-orb bg-orb-b"></div>
-
-    <main class="shell">
-        <header class="header">
+    <main class="workbench">
+        <header class="masthead">
             <div>
-                <p class="eyebrow">Robot Interface</p>
-                <h1>Camera + Chat Console</h1>
+                <p class="eyebrow">Flask Vision Console</p>
+                <h1>Live Cam + Prompt Engine + Output Windows</h1>
+                <p class="subhead">Prompt the current scene, inspect detections, and watch the run log update in place.</p>
             </div>
-            <div class="status-bar">
-                <span id="camera-status" class="pill">Camera: checking...</span>
-                <span id="robot-status" class="pill">Robot: checking...</span>
-                <span id="sim-status" class="pill muted">Mode: unknown</span>
-                <label class="camera-id-control" for="camera-id-input">
-                    Camera ID
-                    <input id="camera-id-input" type="number" min="0" step="1" value="0">
-                </label>
-                <button id="camera-apply-id-btn" class="pill" type="button">Set ID</button>
-                <button id="camera-toggle-id-btn" class="pill" type="button">Next ID</button>
-                <button id="camera-restart-btn" class="pill" type="button">Restart</button>
+
+            <div class="status-rack">
+                <span id="camera-status" class="status-pill">Camera: checking</span>
+                <span id="robot-status" class="status-pill">Robot: checking</span>
+                <span id="sim-status" class="status-pill muted">Pipeline: checking</span>
+                <span id="gemini-status" class="status-pill muted">Gemini: checking</span>
+                <span id="vision-status" class="status-pill muted">Prompt run: idle</span>
             </div>
         </header>
 
-        <section class="grid">
-            <article class="panel camera-panel">
-                <div class="panel-top">
-                    <h2>Live Camera</h2>
-                    <p>Live feed from the selected camera source.</p>
-                </div>
-                <div class="camera-frame">
-                    <img id="camera-feed" src="/api/video_feed" alt="Robot camera feed">
-                </div>
-            </article>
-
-            <article class="panel chat-panel">
-                <div class="panel-top chat-head">
-                    <div>
-                        <h2>Robot Chat</h2>
-                        <p>Send direct instructions to the robot.</p>
+        <section class="dashboard-shell">
+            <section class="stage top-stage">
+                <article class="panel live-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Input</p>
+                            <h2>Live Cam</h2>
+                        </div>
+                        <span class="panel-tag">RealSense notebook stream</span>
                     </div>
-                    <label class="mode-select" for="chat-mode">
-                        Chat Mode
-                        <select id="chat-mode">
-                            <option value="local" selected>Local Parser (No API key)</option>
-                            <option value="openai">AI Interpreter (API key required)</option>
-                        </select>
-                    </label>
-                </div>
 
-                <div id="messages" class="messages" aria-live="polite"></div>
+                    <div class="camera-frame">
+                        <img id="camera-feed" src="/api/video_feed" alt="Live camera feed">
+                    </div>
 
-                <div class="quick-actions">
-                    <button class="chip" data-command="connect">Connect</button>
-                    <button class="chip" data-command="read positions">Read Positions</button>
-                    <button class="chip" data-command="home">Home</button>
-                    <button class="chip" data-command="open gripper">Open Gripper</button>
-                    <button class="chip" data-command="close gripper">Close Gripper</button>
-                    <button class="chip" data-command="disconnect">Disconnect</button>
-                </div>
+                    <div class="camera-toolbar">
+                        <div class="camera-note">
+                            Aligned color + depth frames come from the same RealSense pipeline used by the notebook.
+                        </div>
+                        <button id="camera-restart-btn" class="soft-btn" type="button">Restart pipeline</button>
+                    </div>
+                </article>
 
-                <form id="chat-form" class="chat-form">
-                    <input
-                        id="chat-input"
-                        type="text"
-                        placeholder="Example: move base to 2300"
-                        autocomplete="off"
-                        required
-                    >
-                    <button id="send-btn" type="submit">Send</button>
-                </form>
-            </article>
+                <article class="panel prompt-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Control</p>
+                            <h2>Prompt Engine</h2>
+                        </div>
+                        <span class="panel-tag">Gemini scene prompt</span>
+                    </div>
+
+                    <form id="prompt-form" class="prompt-form">
+                        <label class="field-block" for="prompt-type">
+                            Prompt Type
+                            <select id="prompt-type"></select>
+                        </label>
+
+                        <label class="field-block" for="prompt-input">
+                            Prompt
+                            <textarea id="prompt-input" rows="6" placeholder="Type a scene instruction..."></textarea>
+                        </label>
+
+                        <label class="execution-toggle" for="execute-robot">
+                            <input id="execute-robot" type="checkbox">
+                            <span>Execute robot with the notebook pipeline after preview and calibration</span>
+                        </label>
+
+                        <div class="prompt-actions">
+                            <button id="use-default-btn" class="soft-btn" type="button">Use default</button>
+                            <button id="clear-output-btn" class="soft-btn" type="button">Clear output</button>
+                            <button id="run-prompt-btn" class="primary-btn" type="submit">Run prompt</button>
+                        </div>
+                    </form>
+
+                    <div class="prompt-notes">
+                        <div class="note-card">
+                            <p class="note-label">Active Template</p>
+                            <p id="prompt-helper" class="note-value">Waiting for prompt type...</p>
+                        </div>
+                        <div class="note-card">
+                            <p class="note-label">Current Model</p>
+                            <p id="model-name" class="note-value">Checking...</p>
+                        </div>
+                        <div class="note-card">
+                            <p class="note-label">Execution Mode</p>
+                            <p id="execution-helper" class="note-value">Preview only. Enable execution for pickup tasks.</p>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <div class="log-divider">
+                <span>Log Windows</span>
+            </div>
+
+            <section class="stage bottom-stage">
+                <article class="panel detection-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Output</p>
+                            <h2>Object Detection</h2>
+                        </div>
+                        <span class="panel-tag">Annotated frame</span>
+                    </div>
+
+                    <div class="analysis-frame">
+                        <img id="analysis-output" src="/api/vision/overlay" alt="Annotated prompt output">
+                    </div>
+
+                    <div id="analysis-summary" class="analysis-summary">
+                        Run a prompt to populate detections, source and destination points, and the structured plan.
+                    </div>
+
+                    <div id="detection-list" class="detection-list"></div>
+                </article>
+
+                <article class="panel output-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="panel-kicker">Logs</p>
+                            <h2>Stream / Stdout</h2>
+                        </div>
+                        <span class="panel-tag">Run trace + JSON</span>
+                    </div>
+
+                    <div class="output-stack">
+                        <section class="output-box">
+                            <div class="output-head">
+                                <h3>Event Stream</h3>
+                            </div>
+                            <pre id="stream-output" class="output-pre">Waiting for a prompt run...</pre>
+                        </section>
+
+                        <section class="output-box">
+                            <div class="output-head">
+                                <h3>Structured Output</h3>
+                            </div>
+                            <pre id="json-output" class="output-pre">No plan generated yet.</pre>
+                        </section>
+                    </div>
+                </article>
+            </section>
         </section>
     </main>
 
+    <script>
+        window.FRONTEND_CONFIG = {{ frontend_config | tojson }};
+    </script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
